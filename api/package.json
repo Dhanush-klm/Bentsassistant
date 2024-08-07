@@ -1,0 +1,8 @@
+{
+    "dependencies": {
+      "@pinecone-database/pinecone": "^0.1.6",
+      "openai": "^3.2.1",
+      "sqlite": "^4.1.2",
+      "sqlite3": "^5.1.6"
+    }
+  }

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bent's Woodworking Assistant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        header img {
+            margin-right: 20px;
+        }
+        nav {
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        #mainContent {
+            background-color: #f4f4f4;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        input[type="text"], input[type="number"], textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        #productTable {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #productTable th, #productTable td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        #productTable th {
+            background-color: #f2f2f2;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="bents_logo.png" alt="Bent's Woodworking" width="150">
+        <h1>Bent's Woodworking Assistant</h1>
+    </header>
+
+    <nav>
+        <button id="queryInterfaceBtn">Query Interface</button>
+        <button id="databaseManagementBtn">Database Management</button>
+    </nav>
+
+    <main id="mainContent"></main>
+
+    <script>
+        const mainContent = document.getElementById('mainContent');
+        const queryInterfaceBtn = document.getElementById('queryInterfaceBtn');
+        const databaseManagementBtn = document.getElementById('databaseManagementBtn');
+
+        queryInterfaceBtn.addEventListener('click', showQueryInterface);
+        databaseManagementBtn.addEventListener('click', showDatabaseManagement);
+
+        const EXAMPLE_QUESTIONS = [
+            "How do TSO Products' Festool accessories improve woodworking precision?",
+            "What makes Bits and Bits Company's router bits ideal for woodworking?",
+            "What are the benefits of Japanese saws and chisels from Taylor Toolworks?",
+            "How does the Festool LR 32 System aid in cabinet making?",
+            "What advantages does the Festool Trigger Clamp offer for quick release and one-handed use?"
+        ];
+
+        function showQueryInterface() {
+            mainContent.innerHTML = `
+                <h2>Woodworking Assistant</h2>
+                <h3>Popular Questions</h3>
+                <div id="popularQuestions"></div>
+                <input type="text" id="userQuery" placeholder="What would you like to know about woodworking?">
+                <button onclick="getAnswer()">Get Answer</button>
+                <div id="answer"></div>
+                <h3>Recent Questions and Answers</h3>
+                <div id="recentQA"></div>
+            `;
+            loadPopularQuestions();
+        }
+
+        function showDatabaseManagement() {
+            mainContent.innerHTML = `
+                <h2>Database Management</h2>
+                <h3>All Products</h3>
+                <table id="productTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Title</th>
+                            <th>Tags</th>
+                            <th>Links</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productTableBody"></tbody>
+                </table>
+                <h3>Add New Product</h3>
+                <input type="text" id="newTitle" placeholder="Title">
+                <input type="text" id="newTags" placeholder="Tags (comma-separated)">
+                <input type="text" id="newLink" placeholder="Link">
+                <button onclick="addProduct()">Add Product</button>
+                <h3>Update Product</h3>
+                <input type="number" id="updateId" placeholder="Product ID">
+                <input type="text" id="updateTitle" placeholder="New Title">
+                <input type="text" id="updateTags" placeholder="New Tags">
+                <input type="text" id="updateLink" placeholder="New Link">
+                <button onclick="updateProduct()">Update Product</button>
+                <h3>Delete Product</h3>
+                <input type="number" id="deleteId" placeholder="Product ID">
+                <button onclick="deleteProduct()">Delete Product</button>
+            `;
+            loadProducts();
+        }
+
+        function loadPopularQuestions() {
+            const container = document.getElementById('popularQuestions');
+            container.innerHTML = '';
+            EXAMPLE_QUESTIONS.forEach(question => {
+                const button = document.createElement('button');
+                button.textContent = question;
+                button.onclick = () => {
+                    document.getElementById('userQuery').value = question;
+                    getAnswer();
+                };
+                container.appendChild(button);
+            });
+        }
+
+        async function getAnswer() {
+            const query = document.getElementById('userQuery').value;
+            const answerDiv = document.getElementById('answer');
+            answerDiv.innerHTML = 'Searching for the best answer...';
+            try {
+                const response = await fetch('/api/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+                const data = await response.json();
+                answerDiv.innerHTML = `
+                    <p>${data.answer}</p>
+                    <h4>Related Video</h4>
+                    <iframe width="560" height="315" src="https://www.youtube.com/embed/${data.videoId}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+                    <h4>Related Products</h4>
+                    <ul>
+                        ${data.products.map(product => `<li><a href="${product.link}" target="_blank">${product.title}</a></li>`).join('')}
+                    </ul>
+                `;
+                updateRecentQA(query, data.answer, data.products, data.videoId);
+            } catch (error) {
+                answerDiv.innerHTML = 'Error getting answer. Please try again.';
+            }
+        }
+
+        function updateRecentQA(query, answer, products, videoId) {
+            const recentQA = document.getElementById('recentQA');
+            const qaDiv = document.createElement('div');
+            qaDiv.innerHTML = `
+                <h4>Q: ${query}</h4>
+                <p>A: ${answer}</p>
+                <h5>Related Video</h5>
+                <iframe width="280" height="157" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+                <h5>Related Products</h5>
+                <ul>
+                    ${products.map(product => `<li><a href="${product.link}" target="_blank">${product.title}</a></li>`).join('')}
+                </ul>
+            `;
+            recentQA.insertBefore(qaDiv, recentQA.firstChild);
+        }
+
+        async function loadProducts() {
+            const tableBody = document.getElementById('productTableBody');
+            tableBody.innerHTML = 'Loading products...';
+            try {
+                const response = await fetch('/api/products');
+                const products = await response.json();
+                tableBody.innerHTML = products.map(product => `
+                    <tr>
+                        <td>${product.id}</td>
+                        <td>${product.title}</td>
+                        <td>${product.tags}</td>
+                        <td><a href="${product.link}" target="_blank">${product.link}</a></td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                tableBody.innerHTML = 'Error loading products. Please try again.';
+            }
+        }
+
+        async function addProduct() {
+            const title = document.getElementById('newTitle').value;
+            const tags = document.getElementById('newTags').value;
+            const link = document.getElementById('newLink').value;
+            try {
+                const response = await fetch('/api/products', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, tags, link })
+                });
+                if (response.ok) {
+                    alert('Product added successfully!');
+                    loadProducts();
+                } else {
+                    alert('Error adding product. Please try again.');
+                }
+            } catch (error) {
+                alert('Error adding product. Please try again.');
+            }
+        }
+
+        async function updateProduct() {
+            const id = document.getElementById('updateId').value;
+            const title = document.getElementById('updateTitle').value;
+            const tags = document.getElementById('updateTags').value;
+            const link = document.getElementById('updateLink').value;
+            try {
+                const response = await fetch(`/api/products/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, tags, link })
+                });
+                if (response.ok) {
+                    alert('Product updated successfully!');
+                    loadProducts();
+                } else {
+                    alert('Error updating product. Please try again.');
+                }
+            } catch (error) {
+                alert('Error updating product. Please try again.');
+            }
+        }
+
+        async function deleteProduct() {
+            const id = document.getElementById('deleteId').value;
+            try {
+                const response = await fetch(`/api/products/${id}`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) {
+                    alert('Product deleted successfully!');
+                    loadProducts();
+                } else {
+                    alert('Error deleting product. Please try again.');
+                }
+            } catch (error) {
+                alert('Error deleting product. Please try again.');
+            }
+        }
+
+        // Initialize the app with the query interface
+        showQueryInterface();
+    </script>
+</body>
+</html>
